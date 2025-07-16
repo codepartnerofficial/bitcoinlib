@@ -2,6 +2,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import bchaddrjs from "bchaddrjs";
+import axios from "axios";
 bitcoin.initEccLib(ecc);
 
 export interface Vout {
@@ -72,7 +73,7 @@ export class Bitcoin {
         );
     };
 
-    sendBitcoinSegWit(vout: Vout, outputs: TxOutput[], privateKey: string) {
+    async sendBitcoinSegWit(vout: Vout, outputs: TxOutput[], privateKey: string) {
         const keyPair = this.ECPair.fromWIF(privateKey);
         const signer: bitcoin.Signer = {
             publicKey: Buffer.from(keyPair.publicKey), // fixes the type issue
@@ -101,15 +102,16 @@ export class Bitcoin {
             const inputLength = psbt.inputCount;
             // const fee = psbt.getFee();
             // const dataBytes = 148 * inputLength + 34 * outputLength
-            const dataBytes = 68 * inputLength + 31 * outputLength
-            const fee = Number((Math.ceil(this.fetchFeePerVbyte() * (10 ** 8) * dataBytes) / (10 ** 18)).toFixed(8))
-            console.log("fee", fee)
-            if(output.amount){
+            const feesPerVByte = await this.fetchFeePerVbyte();
+            const dataBytes = 10 + (68 * inputLength) + (31 * (outputLength + 1))
+            const fee = Math.ceil(feesPerVByte * dataBytes)
+            console.log("fee", dataBytes, fee, feesPerVByte)
+            if (output.amount) {
                 total += output.amount
             }
             psbt.addOutput({
                 address: output.address, // your recipient
-                value: output.amount ? (Math.floor(output.amount * 1e8) - 1000) : output.sendRemaining ? (vout.amount - total - fee) : 0, // subtract fee (e.g., 1000 sats)
+                value: output.amount ? Math.floor(output.amount * 1e8) : (output.sendRemaining ? Math.floor(((vout.amount - total) * 1e8) - fee) : 0), // subtract fee (e.g., 1000 sats)
             });
         }
 
@@ -118,10 +120,11 @@ export class Bitcoin {
         psbt.finalizeAllInputs();
 
         const tx = psbt.extractTransaction();
-        console.log("P2PKH TX:", tx.toHex());
+        // console.log("P2PKH TX:", tx.toHex());
+        return tx.toHex();
     }
 
-    sendBitcoin(rawtx: string, vout: Vout, outputs: TxOutput[], privateKey: string) {
+    async sendBitcoin(rawtx: string, vout: Vout, outputs: TxOutput[], privateKey: string) {
         const keyPair = this.ECPair.fromWIF(privateKey);
         // const address = bitcoin.payments.p2pkh({
         //     pubkey: Buffer.from(keyPair.publicKey),
@@ -158,14 +161,14 @@ export class Bitcoin {
             const inputLength = psbt.inputCount;
             // const fee = psbt.getFee();
             const dataBytes = 10 + (148 * inputLength) + (34 * (outputLength + 1));
-            const fee = Number((Math.ceil(this.fetchFeePerVbyte() * (10 ** 8) * dataBytes) / (10 ** 18)).toFixed(8))
-            console.log("fee",);
+            const fee = Number((Math.ceil(await this.fetchFeePerVbyte() * (10 ** 8) * dataBytes) / (10 ** 18)).toFixed(8))
+            // console.log("fee",);
             if (output.amount) {
                 total += output.amount;
             }
             psbt.addOutput({
                 address: output.address, // your recipient
-                value: output.amount ? (Math.floor(output.amount * 1e8) - 1000) : output.sendRemaining ? (vout.amount - total - fee) : 0, // subtract fee (e.g., 1000 sats)
+                value: output.amount ? Math.floor(output.amount * 1e8) : output.sendRemaining ? (vout.amount - total - fee) : 0, // subtract fee (e.g., 1000 sats)
             });
         }
 
@@ -174,42 +177,115 @@ export class Bitcoin {
         psbt.finalizeAllInputs();
 
         const tx = psbt.extractTransaction();
-        console.log("P2PKH TX:", tx.toHex());
+        // console.log("P2PKH TX:", tx.toHex());
+        return tx.toHex();
     }
 
-    // broadcastTransaction
+    async broadcastTransaction(tx: string) {
+        try {
 
-    fetchFeePerVbyte() {
-        if (this.networkName == "mainnet") {
-            return 0.000000008
-        } else {
-            return 0.000000008
+            const data = {
+                jsonrpc: "1.0",
+                id: "curltest",
+                method: "sendrawtransaction",
+                params: [tx]
+            }
+            const response = await axios.post(this.rpc, JSON.stringify(data));
+            if (response.status == 200) {
+                console.log(response.data);
+                return response.data;
+            }
+            throw new Error("Transaction Invalid");
+        } catch (error) {
+            console.log("Broadcast Transaction Failed");
+            throw error
         }
+    }
+
+    async fetchFeePerVbyte() {
+        try {
+
+            const data = {
+                jsonrpc: "1.0",
+                id: "curltest",
+                method: "estimatesmartfee",
+                params: [6]
+            }
+            const response = await axios.post(this.rpc, JSON.stringify(data));
+            if (response.status == 200) {
+                console.log(response.data);
+                return response.data.result?.feerate * 1e5;
+            }
+            throw new Error("Transaction Invalid");
+        } catch (error) {
+            console.log("Broadcast Transaction Failed");
+            // throw error
+            if(this.networkName == "mainnet"){
+                return 100;
+            }else{
+                return 1.2;
+            }
+        }
+        // if (this.networkName == "mainnet") {
+        //     estimatesmartfee
+        //     return 1.2
+        // } else {
+        //     return 1.2
+        // }
     }
 }
 
 // const btc = new Bitcoin();
 
-const addressObject = {
-    address: 'mnUVDize2xtFDvrHrbn3j2mEVMo5YxVABQ',
-    bchAddress: 'bchtest:qpx9zu4zd262vt2rvkvc5w2dmr2hfe0m9scyxv5ued',
-    privateKey: 'L2T7UtdABsezrqjv3razhvfiDNBXgaezu9RRv3C6sYULAgWWcW5g'
-}
+// const addressObject = {
+//     address: 'mnUVDize2xtFDvrHrbn3j2mEVMo5YxVABQ',
+//     bchAddress: 'bchtest:qpx9zu4zd262vt2rvkvc5w2dmr2hfe0m9scyxv5ued',
+//     privateKey: 'L2T7UtdABsezrqjv3razhvfiDNBXgaezu9RRv3C6sYULAgWWcW5g'
+// }
+// https://blockexplorer.one/bitcoin/testnet/tx/85a5f23220cc7c19eb86d0c61342611f5fcfc2dbd96f5cce09ea42c5e08658c1
+// https://blockexplorer.one/bitcoin/testnet/tx/9e171929820f74b4ea62543c278161003dc2475a144afa36c6caf8e3fb8981c9
+// https://blockexplorer.one/bitcoin/testnet/tx/1ce16435561c7d3b9aa3eb99165af655528315df2e1c4c8aeb6824e8b03e8b5f
 const vout: Vout = {
-    amount: 0.00120216,
-    vout: 1,
-    txid: "6bf4399cae890909b0712b51751c78700798c1edee1810ded2bc57673789a77a"
+    amount: 0.00117331,
+    vout: 0,
+    txid: "1ce16435561c7d3b9aa3eb99165af655528315df2e1c4c8aeb6824e8b03e8b5f"
 }
+const addressObject = {
+    address: 'tb1qz35fguvz79peeyjudhg27r7cj5jle3hq49jf7u',
+    bchAddress: 'bchtest:qq2x39r3stc588yjt3kaptc0mz2jtlxxuqeqpdzyrg',
+    privateKey: 'KxKKjBgDnUpYpzFvZHjSNpjZAY7Pqi1k4iMNpE15y1EdFvtTVDBV'
+}
+
 const toAddress = {
-    address: 'n2HSdFaB473UEuSJyFPEP83san94R1Vd11',
-    bchAddress: 'bchtest:qr3ucaa03luhek04s93lqwfhxzewf000xvzmeg7cjt',
-    privateKey: 'L2RgJjExmtggj6jV5ai4Vim75pfmkwQ1d1eeGDH9CJnQqst4zPfD'
+    address: 'tb1qz35fguvz79peeyjudhg27r7cj5jle3hq49jf7u',
+    bchAddress: 'bchtest:qq2x39r3stc588yjt3kaptc0mz2jtlxxuqeqpdzyrg',
+    privateKey: 'KxKKjBgDnUpYpzFvZHjSNpjZAY7Pqi1k4iMNpE15y1EdFvtTVDBV'
 }
 const rawTx = "020000000001011ddcc4d656ca2e11cc2c0cdc987018f7396c9d1dcc12f866800da981c0aec5950100000000fdffffff028dccd046000000001976a914795dfe1c25c1ae9965f45d66383db2bed567ac4c88ac98d50100000000001976a9144c5172a26ab4a62d4365998a394dd8d574e5fb2c88ac01409d3c376c2ef04d134b215e4acd43f383920cc7667c06aceeba7eacfe42c14bb99ae64e572007f5ddbfe568c97bb2351dd97fcb4697a6c98144cd9b9aa722551d95d34500";
 
-// console.log("Address: ",Bitcoin.generateAddress('testnet','keyhash'))
+// 0.00119868 - 0.00003440
+// ===========================
+// Generate Address
+// ===========================
+// console.log("Address: ",Bitcoin.generateAddress('testnet','segwit'))
+
+
+// ===========================
+// Send Transaction
+// ===========================
 const btc = new Bitcoin("https://bitcoin-testnet.g.alchemy.com/v2/D7iVzbC_LzMwoRzi58DhtYnv_pqG2EEq", "testnet");
-btc.sendBitcoin(rawTx, vout, [{ address: toAddress.address, amount: 0.0012 }], addressObject.privateKey)
-// 000000000000016a56fd4e6b3bf776f9497e11997dceef44a0c94425382a6bb9
-// "0.00118999"
-// "0.03286294"
+// SegWit [p2wpkh]
+btc.sendBitcoinSegWit(vout, [{ address: toAddress.address, sendRemaining: true }], addressObject.privateKey)
+
+// Public Key Hash
+// const tx = btc.sendBitcoin(rawTx, vout, [{ address: toAddress.address, amount: 0.0012 }], addressObject.privateKey)
+
+.then(tx=>{
+    console.log("Raw Transaction:", tx);
+    btc.broadcastTransaction(tx)
+    .then(response=>{console.log("Broadcast Response",response)})
+    .catch(err=>console.log(err));
+}).catch(console.error);
+
+
+
