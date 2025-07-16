@@ -1,0 +1,37 @@
+{
+  "name": "@codepartnerofficial/bitcoin",
+  "version": "1.0.0",
+  "description": "A library to send and interact with bitcoin chain",
+  "keywords": [
+    "BitcoinJs",
+    "BitcoinLib",
+    "BitcoinTs"
+  ],
+  "homepage": "https://github.com/codepartnerofficial/bitcoinlib#readme",
+  "bugs": {
+    "url": "https://github.com/codepartnerofficial/bitcoinlib/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codepartnerofficial/bitcoinlib.git"
+  },
+  "license": "ISC",
+  "author": "Code Partner",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bchaddrjs": "^0.4.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "bchaddrjs": "^0.5.2",
+    "bitcoinjs-lib": "^6.1.7",
+    "ecpair": "^3.0.0",
+    "tiny-secp256k1": "^2.2.4"
+  }
+}
