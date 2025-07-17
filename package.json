@@ -1,6 +1,9 @@
 {
   "name": "@codepartnerofficial/bitcoin",
   "version": "1.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "A library to send and interact with bitcoin chain",
   "keywords": [
     "BitcoinJs",
@@ -19,8 +22,14 @@
   "author": "Code Partner",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "dev": "ts-node src/index.ts"
+    "dev": "node test/index.js",
+    "build":"tsc",
+    "prepare":"npm run build"
   },
   "devDependencies": {
     "@types/bchaddrjs": "^0.4.3",
