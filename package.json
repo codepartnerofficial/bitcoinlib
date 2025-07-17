@@ -1,10 +1,10 @@
 {
-  "name": "@codepartnerofficial/bitcoin",
-  "version": "1.0.0",
+  "name": "@codepartner/bitcoin",
+  "version": "1.0.1",
+  "description": "A library to send and interact with bitcoin chain",
   "publishConfig": {
     "access": "public"
   },
-  "description": "A library to send and interact with bitcoin chain",
   "keywords": [
     "BitcoinJs",
     "BitcoinLib",
@@ -20,7 +20,7 @@
   },
   "license": "ISC",
   "author": "Code Partner",
-  "type": "module",
+  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
