@@ -11,7 +11,7 @@ import { Bitcoin, TxInput } from "@codepartner/bitcoin";
 // https://blockexplorer.one/bitcoin/testnet/tx/85a5f23220cc7c19eb86d0c61342611f5fcfc2dbd96f5cce09ea42c5e08658c1
 // https://blockexplorer.one/bitcoin/testnet/tx/9e171929820f74b4ea62543c278161003dc2475a144afa36c6caf8e3fb8981c9
 // https://blockexplorer.one/bitcoin/testnet/tx/1ce16435561c7d3b9aa3eb99165af655528315df2e1c4c8aeb6824e8b03e8b5f
-const utxo:TxInput[] = [{
+const utxo = [{
     amount: 0.00157815, // value
     vout: 0, // n
     txid: "b7eb43ac4aff25bd97d146336bbd6c05c7921a1037a85e923947b3d31f26d7ca",
