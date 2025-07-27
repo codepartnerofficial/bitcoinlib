@@ -4,6 +4,7 @@ import { ECPairFactory } from "ecpair";
 import bchaddrjs from "bchaddrjs";
 bitcoin.initEccLib(ecc);
 
+
 export interface Vout {
     txid: string,
     vout: number,
